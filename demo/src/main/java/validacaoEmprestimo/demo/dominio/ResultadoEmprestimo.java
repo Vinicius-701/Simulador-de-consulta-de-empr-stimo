@@ -6,7 +6,7 @@ public record ResultadoEmprestimo(
         String banco,
         StatusBanco status,
         BigDecimal valorAprovado,
-        String razão
+        String razao
 ) {
 
     public static ResultadoEmprestimo aprovado(String banco, BigDecimal valor){

@@ -14,13 +14,15 @@ import java.util.concurrent.ThreadLocalRandom;
 public class Banco_A {
 
         public record entrada(String cpf, BigDecimal salario, BigDecimal valor, int prazo) {}
-        public record saida(String staus, BigDecimal valor, String motivo) {}
+        public record saida(String status, BigDecimal maxAmount, String motivo) {}
 
 
         @PostMapping("/avaliacao")
         public saida avaliar(@RequestBody entrada requisicao) throws InterruptedException{
-            Thread.sleep(ThreadLocalRandom.current().nextInt(200, 800));
-
+            if (ThreadLocalRandom.current().nextInt(100) < 30) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, "Falha simulada");
+            }
 
             BigDecimal margem = requisicao.salario().multiply(new BigDecimal("0.35"));
             BigDecimal parcela = requisicao.valor().divide(BigDecimal.valueOf(requisicao.prazo()), 2, RoundingMode.HALF_UP);

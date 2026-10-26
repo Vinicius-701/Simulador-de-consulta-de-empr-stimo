@@ -9,15 +9,17 @@
         label { display: block; margin-top: .8rem; font-weight: 600; }
         input { width: 100%; padding: .5rem; box-sizing: border-box; }
         button { margin-top: 1.2rem; padding: .7rem 1.4rem; cursor: pointer; }
+        button:disabled { cursor: wait; opacity: .6; }
         .card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin-top: .8rem; }
-        .APPROVED { border-color: #2e7d32; background: #e8f5e9; }
-        .REJECTED { border-color: #c62828; background: #ffebee; }
-        .UNAVAILABLE { border-color: #ef6c00; background: #fff3e0; }
+        .APROVADO { border-color: #2e7d32; background: #e8f5e9; }
+        .REJEITADO { border-color: #c62828; background: #ffebee; }
+        .INDISPONIVEL { border-color: #ef6c00; background: #fff3e0; }
         .error { color: #c62828; }
     </style>
 </head>
 <body>
 <h1>Simulador de Empréstimo Consignado</h1>
+
 <form id="form">
     <label>Nome <input name="nome" required></label>
     <label>E-mail <input name="email" type="email" required></label>
@@ -28,41 +30,61 @@
     <label>Prazo (meses) <input name="prazoMeses" type="number" min="6" max="96" required></label>
     <button type="submit" id="btn">Simular</button>
 </form>
+
 <div id="out"></div>
 
 <script>
-    const labels = { APPROVED: "Aprovado", REJECTED: "Reprovado", UNAVAILABLE: "Indisponível no momento" };
+    const labels = {
+        APROVADO: "Aprovado",
+        REJEITADO: "Reprovado",
+        INDISPONIVEL: "Indisponível no momento"
+    };
     const brl = v => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
     document.getElementById("form").addEventListener("submit", async e => {
         e.preventDefault();
-        const btn = document.getElementById("btn"), out = document.getElementById("out");
+        const btn = document.getElementById("btn");
+        const out = document.getElementById("out");
+
         const data = Object.fromEntries(new FormData(e.target));
-        ["salario", "valorSolicitado"].forEach(k => data[k] = Number(data[k]));
+        data.salario = Number(data.salario);
+        data.valorSolicitado = Number(data.valorSolicitado);
         data.prazoMeses = Number(data.prazoMeses);
 
-        btn.disabled = true; btn.textContent = "Consultando bancos...";
+        btn.disabled = true;
+        btn.textContent = "Consultando bancos...";
         out.innerHTML = "";
+
         try {
             const res = await fetch("/simulations", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
             });
             const body = await res.json();
+
             if (!res.ok) {
-                out.innerHTML = `<p class="error">${Object.values(body.errors || {}).join("<br>") || body.message}</p>`;
+                const msg = Array.isArray(body)
+                    ? body.map(err => `${err.nome}: ${err.mensagem}`).join("<br>")
+                    : "Erro ao processar a simulação.";
+                out.innerHTML = `<p class="error">${msg}</p>`;
                 return;
             }
+
             out.innerHTML = body.results.map(r => `
-      <div class="card ${r.status}">
-        <strong>${r.bank}: ${labels[r.status]}</strong>
-        ${r.approvedAmount ? `<div>Valor aprovado: ${brl(r.approvedAmount)}</div>` : ""}
-        ${r.reason ? `<div>Motivo: ${r.reason}</div>` : ""}
-      </div>`).join("")
-                + (body.unavailable ? `<p>Alguns bancos não responderam. Tente novamente em instantes.</p>` : "");
+                <div class="card ${r.status}">
+                    <strong>${r.banco}: ${labels[r.status]}</strong>
+                    ${r.valorAprovado ? `<div>Valor aprovado: ${brl(r.valorAprovado)}</div>` : ""}
+                    ${r.razao ? `<div>Motivo: ${r.razao}</div>` : ""}
+                </div>`).join("")
+                + (body.unavailable
+                    ? `<p>Alguns bancos não responderam. Tente novamente em instantes.</p>`
+                    : "");
         } catch {
             out.innerHTML = `<p class="error">Não foi possível concluir a simulação.</p>`;
         } finally {
-            btn.disabled = false; btn.textContent = "Simular";
+            btn.disabled = false;
+            btn.textContent = "Simular";
         }
     });
 </script>

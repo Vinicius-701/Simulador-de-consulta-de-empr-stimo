@@ -35,10 +35,11 @@ public class SimulationService {
                         .supplyAsync(() -> g.analisarFicha(app), executor)
                         .orTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                         .exceptionally(ex -> {
-                            log.warn("Falha ao consultar {}: {}", g.bankName(), ex.getClass().getSimpleName());
+                            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                            log.warn("Falha ao consultar {}: {} - {}", g.bankName(),
+                                    cause.getClass().getSimpleName(), cause.getMessage());
                             return ResultadoEmprestimo.indisponivel(g.bankName(), "BANCO_INDISPONIVEL");
-                        }))
-                .toList();
+                        })).toList();
 
         List<ResultadoEmprestimo> results = futures.stream()
                 .map(CompletableFuture::join)
